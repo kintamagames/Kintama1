@@ -1,125 +1,101 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Circle Jump</title>
+    <title>Circle Jump: Sky Escape</title>
     <style>
-        body { margin: 0; padding: 0; background: #eee; overflow: hidden; font-family: sans-serif; touch-action: none; }
-        canvas { display: block; background: #fff; margin: 0 auto; }
-        #ui { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            display: flex; flex-direction: column; justify-content: center; align-items: center; 
-            background: rgba(255,255,255,0.7); z-index: 10;
+        body { margin: 0; overflow: hidden; background: #87CEEB; touch-action: none; font-family: sans-serif; }
+        canvas { display: block; }
+        #menu-btn {
+            position: absolute; top: 10px; right: 10px;
+            padding: 8px 15px; background: rgba(0,0,0,0.5); color: white;
+            border-radius: 5px; text-decoration: none; font-size: 14px; z-index: 100;
         }
-        h1 { margin-bottom: 20px; color: #333; }
-        button { 
-            padding: 20px 50px; font-size: 24px; font-weight: bold;
-            background: #4CAF50; color: white; border: none; border-radius: 15px; 
-            cursor: pointer; box-shadow: 0 5px #2e6631;
-        }
-        button:active { transform: translateY(3px); box-shadow: 0 2px #2e6631; }
-        .back-menu { margin-top: 30px; text-decoration: none; color: #666; font-weight: bold; }
-        #scoreBoard { position: absolute; top: 20px; width: 100%; text-align: center; font-size: 30px; font-weight: bold; pointer-events: none; }
     </style>
 </head>
 <body>
+    <a href="index.html" id="menu-btn">MENU</a>
+    <canvas id="g"></canvas>
+    <script>
+        const canvas = document.getElementById('g');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
 
-<div id="scoreBoard">SCORE: <span id="sVal">0</span></div>
+        let score = 0, active = true;
+        let py = canvas.height / 2, pv = 0;
+        let obs = []; 
+        let lastObsX = 0; // 最後に障害物を出した場所を記録
 
-<div id="ui">
-    <h1 id="title">CIRCLE JUMP</h1>
-    <button id="startBtn">START GAME</button>
-    <a href="index.html" class="back-menu">← Back to Menu</a>
-</div>
+        function jump(e) {
+            if (e && e.target && e.target.id === 'menu-btn') return;
+            if (!active) { location.reload(); return; }
+            pv = -7; 
+        }
+        window.ontouchstart = (e) => { e.preventDefault(); jump(e); };
+        window.onmousedown = (e) => { jump(e); };
 
-<canvas id="gameCanvas"></canvas>
+        function loop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (active) {
+                pv += 0.4;
+                py += pv;
 
-<script>
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
-    const ui = document.getElementById("ui");
-    const startBtn = document.getElementById("startBtn");
-    const sVal = document.getElementById("sVal");
-    const title = document.getElementById("title");
+                if (py > canvas.height || py < 0) active = false;
 
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+                // 🌟 改良：前の障害物から十分な距離（画面幅の半分以上）が空いたら次を出す
+                if (canvas.width - lastObsX > canvas.width * 0.6) {
+                    let gap = 180; // 隙間を少し広げてより快適に
+                    let minGapY = canvas.height * 0.2;
+                    let maxGapY = canvas.height * 0.8 - gap;
+                    let gapTop = Math.random() * (maxGapY - minGapY) + minGapY;
+                    
+                    obs.push({ x: canvas.width, w: 60, gapTop: gapTop, gapBottom: gapTop + gap });
+                    lastObsX = canvas.width; // 出した場所をリセット
+                }
 
-    let py, pv, score, obs, active = false;
-    const gravity = 0.8;
-    const jumpPower = -15;
+                for (let i = obs.length - 1; i >= 0; i--) {
+                    obs[i].x -= 4;
+                    // lastObsXも一緒に移動させないと次が出てこないので更新
+                    if (i === obs.length - 1) lastObsX = obs[i].x;
 
-    function startGame(e) {
-        if(e) { e.preventDefault(); e.stopPropagation(); }
-        py = canvas.height - 50;
-        pv = 0;
-        score = 0;
-        obs = [];
-        active = true;
-        ui.style.display = "none";
-        sVal.innerText = score;
+                    if (obs[i].x < -60) { obs.splice(i, 1); score++; }
+                    else {
+                        if (50 + 15 > obs[i].x && 50 - 15 < obs[i].x + obs[i].w) {
+                            if (py - 15 < obs[i].gapTop || py + 15 > obs[i].gapBottom) active = false;
+                        }
+                    }
+                }
+            }
+
+            // キャラクター
+            ctx.fillStyle = "#f1c40f";
+            ctx.beginPath(); ctx.arc(50, py, 15, 0, 7); ctx.fill();
+
+            // 柱の描画
+            obs.forEach(o => {
+                ctx.fillStyle = "#2ecc71";
+                ctx.fillRect(o.x, 0, o.w, o.gapTop);
+                ctx.fillRect(o.x, o.gapBottom, o.w, canvas.height - o.gapBottom);
+            });
+            
+            ctx.fillStyle = "white";
+            ctx.font = "bold 24px Arial";
+            ctx.fillText("SCORE: " + score, 20, 40);
+
+            if (!active) {
+                ctx.fillStyle = "rgba(0,0,0,0.7)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "white";
+                ctx.textAlign = "center";
+                ctx.font = "bold 30px Arial";
+                ctx.fillText("GAME OVER", canvas.width/2, canvas.height/2);
+            }
+            requestAnimationFrame(loop);
+        }
         loop();
-    }
-
-    startBtn.addEventListener("click", startGame);
-    startBtn.addEventListener("touchstart", startGame);
-
-    const handleJump = (e) => {
-        if(!active) return;
-        if(e.type === "touchstart") e.preventDefault();
-        if(py >= canvas.height - 50) {
-            pv = jumpPower;
-        }
-    };
-    window.addEventListener("mousedown", handleJump);
-    window.addEventListener("touchstart", handleJump, {passive: false});
-
-    function loop() {
-        if(!active) return;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        pv += gravity;
-        py += pv;
-        if(py > canvas.height - 50) {
-            py = canvas.height - 50;
-            pv = 0;
-        }
-
-        ctx.fillStyle = "#3498db";
-        ctx.beginPath();
-        ctx.arc(60, py - 20, 20, 0, Math.PI * 2);
-        ctx.fill();
-
-        if(Math.random() < 0.02) {
-            obs.push({x: canvas.width, w: 30, h: 40 + Math.random() * 60});
-        }
-
-        for(let i = obs.length - 1; i >= 0; i--) {
-            obs[i].x -= 6;
-            ctx.fillStyle = "#e74c3c";
-            ctx.fillRect(obs[i].x, canvas.height - obs[i].h, obs[i].w, obs[i].h);
-
-            if(obs[i].x < 80 && obs[i].x > 40 && py > canvas.height - obs[i].h) {
-                gameOver();
-            }
-
-            if(obs[i].x < -30) {
-                obs.splice(i, 1);
-                score++;
-                sVal.innerText = score;
-            }
-        }
-        requestAnimationFrame(loop);
-    }
-
-    function gameOver() {
-        active = false;
-        title.innerText = "GAME OVER";
-        startBtn.innerText = "RETRY";
-        ui.style.display = "flex";
-    }
-</script>
-
+    </script>
 </body>
 </html>
