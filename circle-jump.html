@@ -3,14 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Circle Jump: Sky Escape</title>
+    <title>Sky Escape</title>
     <style>
         body { margin: 0; overflow: hidden; background: #87CEEB; touch-action: none; font-family: sans-serif; }
-        canvas { display: block; }
-        #menu-btn {
-            position: absolute; top: 10px; right: 10px;
-            padding: 8px 15px; background: rgba(0,0,0,0.5); color: white;
-            border-radius: 5px; text-decoration: none; font-size: 14px; z-index: 100;
+        canvas { display: block; width: 100vw; height: 100vh; }
+        /* 🌟 ボタンの設定を強化：絶対に最前面(z-index: 9999)に固定 */
+        #menu-btn { 
+            position: fixed; top: 10px; right: 10px; 
+            padding: 12px 20px; background: #000; color: #fff; 
+            border: 2px solid #fff; border-radius: 8px; 
+            text-decoration: none; font-size: 16px; font-weight: bold;
+            z-index: 9999; display: block;
         }
     </style>
 </head>
@@ -20,78 +23,44 @@
     <script>
         const canvas = document.getElementById('g');
         const ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-
-        let score = 0, active = true;
-        let py = canvas.height / 2, pv = 0;
-        let obs = []; 
-        let lastObsX = 0; // 最後に障害物を出した場所を記録
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+        let score = 0, active = true, py = canvas.height/2, pv = 0, obs = [], lastX = 0;
 
         function jump(e) {
-            if (e && e.target && e.target.id === 'menu-btn') return;
+            if (e && e.target.id === 'menu-btn') return;
+            if (e && e.preventDefault) e.preventDefault();
             if (!active) { location.reload(); return; }
-            pv = -7; 
+            pv = -7;
         }
-        window.ontouchstart = (e) => { e.preventDefault(); jump(e); };
-        window.onmousedown = (e) => { jump(e); };
+        window.addEventListener('touchstart', jump, { passive: false });
+        window.addEventListener('mousedown', jump);
 
         function loop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
             if (active) {
-                pv += 0.4;
-                py += pv;
-
+                pv += 0.4; py += pv;
                 if (py > canvas.height || py < 0) active = false;
-
-                // 🌟 改良：前の障害物から十分な距離（画面幅の半分以上）が空いたら次を出す
-                if (canvas.width - lastObsX > canvas.width * 0.6) {
-                    let gap = 180; // 隙間を少し広げてより快適に
-                    let minGapY = canvas.height * 0.2;
-                    let maxGapY = canvas.height * 0.8 - gap;
-                    let gapTop = Math.random() * (maxGapY - minGapY) + minGapY;
-                    
-                    obs.push({ x: canvas.width, w: 60, gapTop: gapTop, gapBottom: gapTop + gap });
-                    lastObsX = canvas.width; // 出した場所をリセット
+                if (canvas.width - lastX > canvas.width * 0.6) {
+                    let gap = 180, min = canvas.height*0.2, max = canvas.height*0.8-gap;
+                    let gt = Math.random()*(max-min)+min;
+                    obs.push({x: canvas.width, gt: gt, gb: gt+gap});
+                    lastX = canvas.width;
                 }
-
-                for (let i = obs.length - 1; i >= 0; i--) {
-                    obs[i].x -= 4;
-                    // lastObsXも一緒に移動させないと次が出てこないので更新
-                    if (i === obs.length - 1) lastObsX = obs[i].x;
-
+                for (let i = obs.length-1; i >= 0; i--) {
+                    obs[i].x -= 4; if (i === obs.length-1) lastX = obs[i].x;
                     if (obs[i].x < -60) { obs.splice(i, 1); score++; }
-                    else {
-                        if (50 + 15 > obs[i].x && 50 - 15 < obs[i].x + obs[i].w) {
-                            if (py - 15 < obs[i].gapTop || py + 15 > obs[i].gapBottom) active = false;
-                        }
+                    else if (50+15 > obs[i].x && 50-15 < obs[i].x+60) {
+                        if (py-15 < obs[i].gt || py+15 > obs[i].gb) active = false;
                     }
                 }
             }
-
-            // キャラクター
-            ctx.fillStyle = "#f1c40f";
-            ctx.beginPath(); ctx.arc(50, py, 15, 0, 7); ctx.fill();
-
-            // 柱の描画
-            obs.forEach(o => {
-                ctx.fillStyle = "#2ecc71";
-                ctx.fillRect(o.x, 0, o.w, o.gapTop);
-                ctx.fillRect(o.x, o.gapBottom, o.w, canvas.height - o.gapBottom);
-            });
-            
-            ctx.fillStyle = "white";
-            ctx.font = "bold 24px Arial";
-            ctx.fillText("SCORE: " + score, 20, 40);
-
+            ctx.fillStyle = "#f1c40f"; ctx.beginPath(); ctx.arc(50, py, 15, 0, 7); ctx.fill();
+            ctx.fillStyle = "#2ecc71";
+            obs.forEach(o => { ctx.fillRect(o.x, 0, 60, o.gt); ctx.fillRect(o.x, o.gb, 60, canvas.height-o.gb); });
+            ctx.fillStyle = "white"; ctx.font = "bold 24px Arial"; ctx.fillText("SCORE: " + score, 20, 40);
             if (!active) {
-                ctx.fillStyle = "rgba(0,0,0,0.7)";
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = "white";
-                ctx.textAlign = "center";
-                ctx.font = "bold 30px Arial";
-                ctx.fillText("GAME OVER", canvas.width/2, canvas.height/2);
+                ctx.fillStyle = "rgba(0,0,0,0.7)"; ctx.fillRect(0,0,canvas.width,canvas.height);
+                ctx.fillStyle="white"; ctx.textAlign="center"; ctx.font="30px Arial"; ctx.fillText("GAME OVER", canvas.width/2, canvas.height/2);
             }
             requestAnimationFrame(loop);
         }

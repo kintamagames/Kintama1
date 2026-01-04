@@ -3,14 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Fruit Catch: Danger</title>
+    <title>Fruit Catch</title>
     <style>
         body { margin: 0; overflow: hidden; background: #2c3e50; touch-action: none; font-family: sans-serif; }
-        canvas { display: block; }
-        #menu-btn {
-            position: absolute; top: 10px; right: 10px;
-            padding: 8px 15px; background: rgba(255,255,255,0.2); color: white;
-            border-radius: 5px; text-decoration: none; font-size: 14px; z-index: 100;
+        canvas { display: block; width: 100vw; height: 100vh; }
+        #menu-btn { 
+            position: fixed; top: 10px; right: 10px; 
+            padding: 12px 20px; background: #fff; color: #000; 
+            border: 2px solid #000; border-radius: 8px; 
+            text-decoration: none; font-size: 16px; font-weight: bold;
+            z-index: 9999; display: block;
         }
     </style>
 </head>
@@ -20,104 +22,98 @@
     <script>
         const canvas = document.getElementById('g');
         const ctx = canvas.getContext('2d');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
 
-        let score = 0, active = true;
-        let basket = { x: canvas.width/2 - 50, w: 100, h: 20 };
-        let items = [];
-        let speedMult = 1; // スコアに応じて速くする
+        let score = 0, active = true, items = [];
+        // 🌟 カゴの位置を少し上に調整（canvas.height - 120）して見やすくしました
+        let basket = { x: canvas.width/2-50, y: canvas.height - 120, w: 100, h: 20 };
 
         function move(e) {
+            if (e.preventDefault) e.preventDefault();
             let x = e.touches ? e.touches[0].clientX : e.clientX;
             basket.x = x - basket.w/2;
-            // 画面外に出ないように制限
-            if (basket.x < 0) basket.x = 0;
-            if (basket.x > canvas.width - basket.w) basket.x = canvas.width - basket.w;
         }
-        window.ontouchmove = (e) => { if(e.target.id !== 'menu-btn') e.preventDefault(); move(e); };
+
+        function handleTouch(e) {
+            if (e.target.id === 'menu-btn') return;
+            if (!active) location.reload();
+        }
+
+        window.addEventListener('touchmove', move, { passive: false });
         window.onmousemove = move;
+        window.addEventListener('touchstart', handleTouch);
+        window.addEventListener('mousedown', handleTouch);
+
+        // 🌟 フルーツ（りんご）を描画する関数
+        function drawFruit(x, y) {
+            // 実の部分
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.arc(x + 15, y + 15, 15, 0, Math.PI * 2);
+            ctx.fill();
+            // ヘタの部分
+            ctx.fillStyle = '#27ae60';
+            ctx.fillRect(x + 13, y - 2, 4, 8);
+        }
+
+        // 🌟 爆弾を描画する関数
+        function drawBomb(x, y) {
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(x + 15, y + 15, 15, 0, Math.PI * 2);
+            ctx.fill();
+            // 導火線
+            ctx.strokeStyle = '#f1c40f';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(x + 15, y);
+            ctx.lineTo(x + 25, y - 10);
+            ctx.stroke();
+        }
 
         function loop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             if (active) {
-                // スコアに合わせて難易度アップ
-                speedMult = 1 + (score / 20);
-
-                // アイテム生成（フルーツか爆弾か）
                 if (Math.random() < 0.04) {
-                    let isBomb = Math.random() < 0.2; // 20%の確率で爆弾
-                    items.push({ 
-                        x: Math.random() * (canvas.width - 30), 
-                        y: -30, 
-                        type: isBomb ? 'bomb' : 'fruit',
-                        s: (4 + Math.random() * 3) * speedMult
-                    });
+                    let isB = Math.random() < 0.2;
+                    items.push({ x: Math.random()*(canvas.width-30), y: -30, t: isB?'bomb':'fruit', s: 4+(score/10) });
                 }
-
                 for (let i = items.length - 1; i >= 0; i--) {
                     items[i].y += items[i].s;
-                    
-                    // キャッチ判定
-                    if (items[i].y > canvas.height - 80 && items[i].x > basket.x && items[i].x < basket.x + basket.w) {
-                        if (items[i].type === 'fruit') {
-                            score++;
-                            items.splice(i, 1);
-                        } else {
-                            // 爆弾を取ったらゲームオーバー
-                            active = false;
-                        }
-                    } else if (items[i].y > canvas.height) {
-                        items.splice(i, 1);
+                    // 当たり判定（カゴの位置 y に合わせる）
+                    if (items[i].y > basket.y - 20 && items[i].y < basket.y + 10 && 
+                        items[i].x > basket.x - 10 && items[i].x < basket.x + basket.w) {
+                        if (items[i].t === 'fruit') { score++; items.splice(i, 1); } 
+                        else { active = false; }
+                    } else if (items[i].y > canvas.height) { 
+                        items.splice(i, 1); 
                     }
                 }
             }
 
-            // カゴの描画
-            ctx.fillStyle = '#f39c12';
-            ctx.fillRect(basket.x, canvas.height - 80, basket.w, basket.h);
-            ctx.fillStyle = '#d35400'; // カゴの厚み
-            ctx.fillRect(basket.x, canvas.height - 60, basket.w, 5);
-
-            // アイテムの描画
-            items.forEach(item => {
-                if (item.type === 'fruit') {
-                    ctx.fillStyle = '#e74c3c'; // りんご
-                    ctx.beginPath(); ctx.arc(item.x+15, item.y+15, 15, 0, 7); ctx.fill();
-                    ctx.fillStyle = '#27ae60'; // ヘタ
-                    ctx.fillRect(item.x+13, item.y, 4, 8);
-                } else {
-                    ctx.fillStyle = '#2c3e50'; // 爆弾本体
-                    ctx.strokeStyle = 'white';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath(); ctx.arc(item.x+15, item.y+15, 15, 0, 7); ctx.fill(); ctx.stroke();
-                    ctx.fillStyle = 'white'; // 導火線
-                    ctx.fillRect(item.x+13, item.y-5, 4, 10);
-                }
-            });
+            // カゴの描画（木製のカゴっぽい色に）
+            ctx.fillStyle = '#d35400';
+            ctx.fillRect(basket.x, basket.y, basket.w, basket.h);
             
-            // スコア表示
-            ctx.fillStyle = "white";
-            ctx.font = "bold 24px Arial";
-            ctx.textAlign = "center";
+            // アイテムの描画
+            items.forEach(it => {
+                if(it.t === 'fruit') drawFruit(it.x, it.y);
+                else drawBomb(it.x, it.y);
+            });
+
+            ctx.fillStyle = "white"; ctx.font = "bold 24px Arial"; ctx.textAlign = "center";
             ctx.fillText("SCORE: " + score, canvas.width/2, 50);
 
             if (!active) {
                 ctx.fillStyle = "rgba(0,0,0,0.8)";
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 ctx.fillStyle = "white";
-                ctx.textAlign = "center";
                 ctx.font = "bold 30px Arial";
                 ctx.fillText("BOMB! GAME OVER", canvas.width/2, canvas.height/2);
-                ctx.font = "18px Arial";
-                ctx.fillText("Tap to Retry", canvas.width/2, canvas.height/2 + 50);
-                
-                // リスタート用
-                window.onclick = () => { if(!active) location.reload(); };
-                window.ontouchstart = () => { if(!active) location.reload(); };
+                ctx.font = "20px Arial";
+                ctx.fillText("Tap to Restart", canvas.width/2, canvas.height/2 + 50);
             }
-            
             requestAnimationFrame(loop);
         }
         loop();
