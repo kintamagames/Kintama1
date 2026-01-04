@@ -7,13 +7,7 @@
     <style>
         body { margin: 0; overflow: hidden; background: #2c3e50; touch-action: none; font-family: sans-serif; }
         canvas { display: block; width: 100vw; height: 100vh; }
-        #menu-btn { 
-            position: fixed; top: 10px; right: 10px; 
-            padding: 12px 20px; background: #fff; color: #000; 
-            border: 2px solid #000; border-radius: 8px; 
-            text-decoration: none; font-size: 16px; font-weight: bold;
-            z-index: 9999; display: block;
-        }
+        #menu-btn { position: fixed; top: 10px; right: 10px; padding: 12px 20px; background: #fff; color: #000; border: 2px solid #000; border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: bold; z-index: 9999; }
     </style>
 </head>
 <body>
@@ -23,57 +17,41 @@
         const canvas = document.getElementById('g');
         const ctx = canvas.getContext('2d');
         canvas.width = window.innerWidth; canvas.height = window.innerHeight;
-
         let score = 0, active = true, items = [];
-        // 🌟 カゴの位置を少し上に調整（canvas.height - 120）して見やすくしました
-        let basket = { x: canvas.width/2-50, y: canvas.height - 120, w: 100, h: 20 };
+        // ウェブで見えなくならないよう位置を高く設定 (下から1/4の位置)
+        let basket = { x: canvas.width/2-50, y: canvas.height * 0.75, w: 100, h: 20 };
 
         function move(e) {
-            if (e.preventDefault) e.preventDefault();
+            if (e.cancelable) e.preventDefault();
+            let rect = canvas.getBoundingClientRect();
             let x = e.touches ? e.touches[0].clientX : e.clientX;
-            basket.x = x - basket.w/2;
+            // 枠内での座標ズレを補正
+            basket.x = (x - rect.left) - basket.w/2;
         }
 
-        function handleTouch(e) {
+        function restart(e) {
             if (e.target.id === 'menu-btn') return;
             if (!active) location.reload();
         }
 
-        window.addEventListener('touchmove', move, { passive: false });
-        window.onmousemove = move;
-        window.addEventListener('touchstart', handleTouch);
-        window.addEventListener('mousedown', handleTouch);
+        // documentに登録して枠越しでも反応させる
+        document.addEventListener('touchmove', move, { passive: false });
+        document.addEventListener('mousemove', move);
+        document.addEventListener('touchstart', restart);
+        document.addEventListener('mousedown', restart);
 
-        // 🌟 フルーツ（りんご）を描画する関数
         function drawFruit(x, y) {
-            // 実の部分
-            ctx.fillStyle = '#e74c3c';
-            ctx.beginPath();
-            ctx.arc(x + 15, y + 15, 15, 0, Math.PI * 2);
-            ctx.fill();
-            // ヘタの部分
-            ctx.fillStyle = '#27ae60';
-            ctx.fillRect(x + 13, y - 2, 4, 8);
+            ctx.fillStyle = '#e74c3c'; ctx.beginPath(); ctx.arc(x + 15, y + 15, 15, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#27ae60'; ctx.fillRect(x + 13, y - 2, 4, 8);
         }
 
-        // 🌟 爆弾を描画する関数
         function drawBomb(x, y) {
-            ctx.fillStyle = '#000';
-            ctx.beginPath();
-            ctx.arc(x + 15, y + 15, 15, 0, Math.PI * 2);
-            ctx.fill();
-            // 導火線
-            ctx.strokeStyle = '#f1c40f';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(x + 15, y);
-            ctx.lineTo(x + 25, y - 10);
-            ctx.stroke();
+            ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(x + 15, y + 15, 15, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = '#f1c40f'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x + 15, y); ctx.lineTo(x + 25, y - 10); ctx.stroke();
         }
 
         function loop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
             if (active) {
                 if (Math.random() < 0.04) {
                     let isB = Math.random() < 0.2;
@@ -81,38 +59,18 @@
                 }
                 for (let i = items.length - 1; i >= 0; i--) {
                     items[i].y += items[i].s;
-                    // 当たり判定（カゴの位置 y に合わせる）
-                    if (items[i].y > basket.y - 20 && items[i].y < basket.y + 10 && 
-                        items[i].x > basket.x - 10 && items[i].x < basket.x + basket.w) {
-                        if (items[i].t === 'fruit') { score++; items.splice(i, 1); } 
-                        else { active = false; }
-                    } else if (items[i].y > canvas.height) { 
-                        items.splice(i, 1); 
-                    }
+                    if (items[i].y > basket.y - 20 && items[i].y < basket.y + 10 && items[i].x > basket.x - 10 && items[i].x < basket.x + basket.w) {
+                        if (items[i].t === 'fruit') { score++; items.splice(i, 1); } else { active = false; }
+                    } else if (items[i].y > canvas.height) { items.splice(i, 1); }
                 }
             }
-
-            // カゴの描画（木製のカゴっぽい色に）
-            ctx.fillStyle = '#d35400';
-            ctx.fillRect(basket.x, basket.y, basket.w, basket.h);
-            
-            // アイテムの描画
-            items.forEach(it => {
-                if(it.t === 'fruit') drawFruit(it.x, it.y);
-                else drawBomb(it.x, it.y);
-            });
-
-            ctx.fillStyle = "white"; ctx.font = "bold 24px Arial"; ctx.textAlign = "center";
-            ctx.fillText("SCORE: " + score, canvas.width/2, 50);
-
+            ctx.fillStyle = '#d35400'; ctx.fillRect(basket.x, basket.y, basket.w, basket.h);
+            items.forEach(it => { if(it.t === 'fruit') drawFruit(it.x, it.y); else drawBomb(it.x, it.y); });
+            ctx.fillStyle = "white"; ctx.font = "bold 24px Arial"; ctx.textAlign = "center"; ctx.fillText("SCORE: " + score, canvas.width/2, 50);
             if (!active) {
-                ctx.fillStyle = "rgba(0,0,0,0.8)";
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = "white";
-                ctx.font = "bold 30px Arial";
-                ctx.fillText("BOMB! GAME OVER", canvas.width/2, canvas.height/2);
-                ctx.font = "20px Arial";
-                ctx.fillText("Tap to Restart", canvas.width/2, canvas.height/2 + 50);
+                ctx.fillStyle = "rgba(0,0,0,0.8)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "white"; ctx.font = "bold 30px Arial"; ctx.fillText("BOMB! GAME OVER", canvas.width/2, canvas.height/2);
+                ctx.font = "20px Arial"; ctx.fillText("Tap to Restart", canvas.width/2, canvas.height/2 + 50);
             }
             requestAnimationFrame(loop);
         }
