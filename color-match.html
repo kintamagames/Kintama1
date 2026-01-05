@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Color Match</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #222; touch-action: none; font-family: sans-serif; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+        #menu-btn { 
+            position: fixed; top: 10px; right: 10px; 
+            padding: 12px 20px; background: #fff; color: #000; 
+            border: 2px solid #000; border-radius: 8px; 
+            text-decoration: none; font-size: 16px; font-weight: bold;
+            z-index: 9999; display: block;
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" id="menu-btn">MENU</a>
+    <canvas id="g"></canvas>
+    <script>
+        const canvas = document.getElementById('g');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+
+        const colors = ['#FF3131', '#39FF14', '#00D4FF', '#FFD700'];
+        let score = 0, active = true;
+        let p = { x: canvas.width/2, y: canvas.height * 0.8, v: 0, r: 12, c: Math.floor(Math.random()*4) };
+        let obstacles = [];
+        let offset = 0;
+
+        function addObs(y) {
+            // 障害物の回転方向をランダムに (右回り or 左回り)
+            let dir = Math.random() < 0.5 ? 1 : -1;
+            // 回転速度もスコアに応じて少しずつ速くする
+            let speed = (0.02 + Math.random() * 0.02) * dir;
+            obstacles.push({ y: y, angle: 0, type: 'circle', colorItem: true, speed: speed });
+        }
+        for(let i=0; i<3; i++) addObs(canvas.height/2 - i*400);
+
+        function jump(e) {
+            if (e.target.id === 'menu-btn') return;
+            if (e.cancelable) e.preventDefault();
+            if (!active) location.reload();
+            p.v = -7;
+        }
+        document.addEventListener('touchstart', jump, { passive: false });
+        document.addEventListener('mousedown', jump);
+
+        function loop() {
+            ctx.fillStyle = '#222';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            if (active) {
+                p.v += 0.35;
+                p.y += p.v;
+                
+                if (p.y < canvas.height / 2) {
+                    let diff = canvas.height / 2 - p.y;
+                    p.y = canvas.height / 2;
+                    offset += diff;
+                    obstacles.forEach(o => o.y += diff);
+                }
+
+                if (p.y > canvas.height) active = false;
+
+                obstacles.forEach((o, i) => {
+                    o.angle += o.speed;
+                    const centerX = canvas.width / 2;
+                    const radius = 80;
+                    const thickness = 15;
+
+                    for (let j = 0; j < 4; j++) {
+                        ctx.strokeStyle = colors[j];
+                        ctx.lineWidth = thickness;
+                        ctx.beginPath();
+                        let start = o.angle + (j * Math.PI/2);
+                        let end = start + Math.PI/2;
+                        ctx.arc(centerX, o.y, radius, start, end);
+                        ctx.stroke();
+
+                        if (Math.abs(p.y - o.y) < radius + p.r && Math.abs(p.y - o.y) > radius - thickness - p.r) {
+                            let ballAngle = Math.atan2(p.y - o.y, p.x - centerX);
+                            if (ballAngle < 0) ballAngle += Math.PI * 2;
+                            let normalizedAngle = (ballAngle - o.angle) % (Math.PI * 2);
+                            if (normalizedAngle < 0) normalizedAngle += Math.PI * 2;
+                            let colorIdx = Math.floor(normalizedAngle / (Math.PI/2));
+                            
+                            if (colorIdx !== p.c) active = false;
+                        }
+                    }
+
+                    if (o.colorItem) {
+                        // アイテムをキラキラさせる
+                        ctx.fillStyle = 'white';
+                        ctx.beginPath(); ctx.arc(centerX, o.y, 12, 0, 7); ctx.fill();
+                        
+                        if (Math.abs(p.y - o.y) < 25) {
+                            // 🌟 【修正】今の色以外の色をランダムに選ぶ
+                            let nextC;
+                            do {
+                                nextC = Math.floor(Math.random() * 4);
+                            } while (nextC === p.c);
+                            
+                            p.c = nextC;
+                            o.colorItem = false;
+                            score++;
+                        }
+                    }
+
+                    if (o.y > canvas.height + 150) {
+                        obstacles.splice(i, 1);
+                        addObs(obstacles[obstacles.length-1].y - 400);
+                    }
+                });
+            }
+
+            ctx.fillStyle = colors[p.c];
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = "white"; ctx.font = "bold 40px Arial"; ctx.textAlign = "center";
+            ctx.fillText(score, canvas.width/2, 60);
+
+            if (!active) {
+                ctx.fillStyle = "rgba(0,0,0,0.8)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "white";
+                ctx.font = "bold 30px Arial";
+                ctx.fillText("GAME OVER", canvas.width/2, canvas.height/2);
+                ctx.font = "20px Arial";
+                ctx.fillText("Tap to Restart", canvas.width/2, canvas.height/2 + 50);
+            }
+            requestAnimationFrame(loop);
+        }
+        loop();
+    </script>
+</body>
+</html>

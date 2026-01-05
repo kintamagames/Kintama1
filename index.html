@@ -2,44 +2,62 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Web Arcade - Play Free Games</title>
     <style>
-        body { font-family: 'Arial', sans-serif; background-color: #1a1a2e; color: #fff; text-align: center; padding: 20px; }
-        h1 { color: #fff; background: #e94560; padding: 10px; border-radius: 10px; display: inline-block; }
+        body { font-family: 'Arial', sans-serif; background-color: #1a1a2e; color: #fff; text-align: center; padding: 20px; margin: 0; }
+        h1 { color: #fff; background: #e94560; padding: 10px 30px; border-radius: 10px; display: inline-block; box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4); }
         p { color: #95a5a6; }
         .game-list { display: flex; flex-direction: column; align-items: center; gap: 20px; margin-top: 30px; }
+        
+        /* ゲームカードの基本設定 */
         .game-card { 
             background: #16213e; border: 2px solid #e94560; border-radius: 15px; 
             width: 90%; max-width: 400px; padding: 20px; text-decoration: none; 
-            transition: transform 0.2s; display: block;
+            transition: transform 0.2s; display: block; color: inherit;
         }
         .game-card:active { transform: scale(0.95); }
+        
+        /* 4つ目のColor Matchだけ特別にネオンっぽく強調 */
+        .new-game { border-color: #39FF14; box-shadow: 0 0 10px rgba(57, 255, 20, 0.3); }
+        .new-tag { background: #39FF14; color: #000; font-size: 10px; padding: 2px 6px; border-radius: 4px; vertical-align: middle; margin-left: 10px; }
+
         .game-title { font-size: 24px; font-weight: bold; color: #fff; margin-bottom: 5px; }
         .game-desc { font-size: 14px; color: #bdc3c7; }
-        .play-btn { margin-top: 15px; display: inline-block; background: #e94560; color: #fff; padding: 10px 20px; border-radius: 5px; text-decoration: none; font-weight: bold; }
+        .play-btn { margin-top: 15px; display: inline-block; background: #e94560; color: #fff; padding: 10px 40px; border-radius: 5px; text-decoration: none; font-weight: bold; }
+        .btn-new { background: #39FF14; color: #000; }
     </style>
 </head>
 <body>
     <h1>Web Arcade</h1>
     <p>Enjoy free browser games anywhere!</p>
+    
     <div class="game-list">
         <a href="circle-jump.html" class="game-card">
-            <div class="game-title">Circle Jump</div>
+            <div class="game-title">Sky Escape</div>
             <div class="game-desc">Simple & Addictive! Jump to stay alive.</div>
             <div class="play-btn">PLAY NOW</div>
         </a>
+
         <a href="neon-timing.html" class="game-card">
             <div class="game-title">Fruit Catch</div>
-            <div class="game-desc">Catch the fruits at the perfect timing!</div>
+            <div class="game-desc">Catch the fruits and avoid the bombs!</div>
             <div class="play-btn">PLAY NOW</div>
         </a>
+
         <a href="pulse-escape.html" class="game-card">
             <div class="game-title">Pulse Escape</div>
             <div class="game-desc">Survival Action! Dodge the incoming pulses.</div>
-            <div class="play-btn =">PLAY NOW</div>
+            <div class="play-btn">PLAY NOW</div>
+        </a>
+
+        <a href="color-match.html" class="game-card new-game">
+            <div class="game-title">Color Match <span class="new-tag">NEW</span></div>
+            <div class="game-desc">Match your color to pass through!</div>
+            <div class="play-btn btn-new">PLAY NOW</div>
         </a>
     </div>
+
     <footer style="margin-top: 50px; font-size: 12px; color: #555;">
         &copy; 2026 Web Arcade. All Rights Reserved.
     </footer>
